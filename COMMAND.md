@@ -470,3 +470,29 @@ docker compose run --rm backend-tools npm test
 Confirmed the existing unit test suite (health check) still passes unaffected.
 
 Confirmed `test/` is excluded from the production build (`tsconfig.build.json`'s `exclude`), so these new spec files don't affect the Docker image.
+
+---
+
+## Phase 18 — Build Game List
+
+```bash
+docker compose run --rm frontend-tools npm install react-router-dom
+```
+Installed routing (needed for `/` → list, `/games/:id` → details navigation). Same pre-existing moderate/high `esbuild` dev-only audit finding, no new issue introduced.
+
+```bash
+docker compose run --rm frontend-tools npm run build
+```
+Built `types/game.ts`, `services/api.ts` (`fetchGames()`), `components/GameCard.tsx`, `pages/GameListPage.tsx` (fetch-on-mount with loading/error states), a minimal placeholder `pages/GameDetailsPage.tsx` (fully built out in Phase 19), and wired `BrowserRouter`/`Routes` into `App.tsx`. Also added a Vite dev-server proxy (`/api` → `http://localhost:3001`) so `npm run dev` works standalone too, not just the Nginx-fronted production container. Build succeeded.
+
+```bash
+docker compose down -v
+docker compose up -d --build
+curl -s -w "\n%{http_code}\n" http://localhost:3000/
+curl -s http://localhost:3000/api/games
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3000/games/1
+BUNDLE=$(curl -s http://localhost:3000/ | grep -o '/assets/index-[^"]*\.js')
+curl -s "http://localhost:3000$BUNDLE" | grep -o "fetch(\"/api/games\")"
+docker compose down
+```
+Fresh full-stack verification: index page serves, `/api/games` returns real seeded data through the Nginx proxy, the deep route `/games/1` correctly falls back to the SPA (`200`, not `404`), and the built JS bundle contains the exact `fetch("/api/games")` call. **Not verified**: actual rendered output / click-through in a browser — no browser automation tool is available in this session, so only the network/bundle-level plumbing was confirmed, not the visual render.

@@ -1,9 +1,15 @@
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { GameListPage } from './pages/GameListPage';
+import { GameDetailsPage } from './pages/GameDetailsPage';
+
 function App() {
   return (
-    <main>
-      <h1>Game Review</h1>
-      <p>Frontend skeleton is running.</p>
-    </main>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<GameListPage />} />
+        <Route path="/games/:id" element={<GameDetailsPage />} />
+      </Routes>
+    </BrowserRouter>
   )
 }
 
