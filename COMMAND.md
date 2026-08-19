@@ -33,3 +33,41 @@ cat /tmp/health.json
 docker rm -f backend-smoketest
 ```
 Boots the actual Nest dev server (`npm run start`) in a detached, named container, publishing container port `3001` to host port `3011` (`3001` was already taken by an unrelated local process). After a short wait for startup, `curl`s the `/api/health` route to confirm it responds `200 {"status":"ok"}`, then tears the container down. This is a one-off manual smoke test, not part of the permanent tooling.
+
+---
+
+## Phase 4 — Initialize React + Vite (skeleton)
+
+```bash
+docker compose run --rm frontend-tools npm create vite@latest . -- --template react-ts
+```
+First attempt: scaffolding directly into `frontend/` (already non-empty from Phase 1's `components/pages/services/types` folders) triggered create-vite's interactive "directory not empty" prompt, which can't be answered non-interactively — the command aborted with "Operation cancelled".
+
+```bash
+docker compose run --rm frontend-tools npm create vite@latest tmp-scaffold -- --template react-ts
+```
+Worked around the prompt by scaffolding into a fresh subfolder (`frontend/tmp-scaffold/`) instead, then the generated files were moved up into `frontend/` (merging with, not overwriting, the existing `src/components|pages|services|types` folders) via plain `mv`/`rmdir`, not a Docker command.
+
+```bash
+rm -rf node_modules package-lock.json
+docker compose run --rm frontend-tools npm install
+```
+Installed dependencies as scaffolded. The generated `package.json` used Vite 8 (built on the new Rolldown bundler); its optional native binding package `@rolldown/binding-linux-arm64-gnu` doesn't currently have a published version matching what Vite 8 expects for the container's platform, so `npm run build` failed with `Cannot find module`. Rewrote `package.json` to pin the stable, non-Rolldown Vite 5 line (`vite@^5.4.11`, `@vitejs/plugin-react@^4.3.4`, `react@^18.3.1`) and removed the also-native `oxlint` devDependency/config, then reinstalled.
+
+```bash
+docker compose run --rm frontend-tools npm run build
+```
+Confirms the production build works: `tsc -b && vite build` succeeds and emits `dist/`.
+
+```bash
+docker compose run --rm frontend-tools npm audit
+```
+Checked for known vulnerabilities. One moderate finding remains: `esbuild`'s dev server accepting requests from any origin (dev-only exposure, doesn't affect the production build). The suggested fix (`npm audit fix --force`) would reintroduce the broken Vite 8/Rolldown line, so it was left as-is.
+
+```bash
+docker compose run --rm -d -p 5174:5173 --name frontend-smoketest frontend-tools npm run dev -- --host 0.0.0.0
+sleep 5
+curl -s -o /tmp/frontend2.html -w "%{http_code}\n" http://127.0.0.1:5174/
+docker rm -f frontend-smoketest
+```
+Boots the Vite dev server in a detached container (`--host 0.0.0.0` so it accepts connections from outside the container), published to host port `5174` (an unrelated host process already held `5173`, including on `[::1]`, which caused a false-negative on the first attempt via `localhost`). Confirms `200` with the expected HTML, then tears the container down. One-off manual smoke test, not part of the permanent tooling.
