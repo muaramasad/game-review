@@ -71,3 +71,27 @@ curl -s -o /tmp/frontend2.html -w "%{http_code}\n" http://127.0.0.1:5174/
 docker rm -f frontend-smoketest
 ```
 Boots the Vite dev server in a detached container (`--host 0.0.0.0` so it accepts connections from outside the container), published to host port `5174` (an unrelated host process already held `5173`, including on `[::1]`, which caused a false-negative on the first attempt via `localhost`). Confirms `200` with the expected HTML, then tears the container down. One-off manual smoke test, not part of the permanent tooling.
+
+---
+
+## Phase 5 — Dockerize backend
+
+```bash
+docker build -t game-review-backend:phase5 ./backend
+```
+Builds the multi-stage `backend/Dockerfile` image directly (not through `docker compose run`, since this builds the production image itself rather than using it as a Node tool). Stage 1 (`build`) installs all deps and runs `npm run build` (`nest build`); stage 2 (`production`) installs only production deps and copies in the compiled `dist/` output. Tagged `:phase5` as a temporary, throwaway tag for this manual verification — the real image gets built/tagged by Docker Compose in Phase 8.
+
+```bash
+docker run --rm -d -p 3012:3001 --name backend-image-smoketest game-review-backend:phase5
+sleep 4
+curl -s -o /tmp/health2.json -w "%{http_code}\n" http://127.0.0.1:3012/api/health
+docker logs backend-image-smoketest
+docker rm -f backend-image-smoketest
+```
+Runs the built production image standalone (`CMD ["node", "dist/main.js"]`, no dev server, no TypeScript/nest-cli present in the image), publishing to host port `3012`. Confirms `/api/health` returns `200 {"status":"ok"}`, then tears the container down.
+
+```bash
+docker images game-review-backend:phase5
+docker rmi game-review-backend:phase5
+```
+Checked the built image size (226MB) and removed the temporary `:phase5` tag/image after the smoke test — it isn't needed once Compose builds its own image from the Dockerfile in Phase 8.
