@@ -4,12 +4,14 @@ services:
     working_dir: /app
     volumes:
       - ./backend:/app
+    profiles: ["tools"]
 
   frontend-tools:
     image: node:20
     working_dir: /app
     volumes:
       - ./frontend:/app
+    profiles: ["tools"]
 
   backend:
     build: ./backend

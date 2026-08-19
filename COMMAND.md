@@ -144,3 +144,68 @@ Confirmed `wget` (via BusyBox) is present in the `node:20-alpine` base image, ne
 docker compose config
 ```
 Validated the updated `docker-compose.yml` after adding the `backend`/`frontend` runtime services and the `sqlite-data` named volume (mounted at `/app/data` on `backend`). Confirms Compose parses the healthcheck, `depends_on: condition: service_healthy`, port mappings (`3001:3001`, `3000:80`), and volume correctly. Actually starting the stack (`docker compose up --build`) is deferred to Phase 9, where startup ordering, healthcheck timing, and the live Nginx→backend proxy get verified together.
+
+---
+
+## Phase 9 — Verify one-command startup
+
+```bash
+lsof -nP -iTCP:3000 -sTCP:LISTEN
+lsof -nP -iTCP:3001 -sTCP:LISTEN
+```
+Checked host ports 3000/3001 were free before starting the stack. Port 3001 was initially held by an unrelated process from another project; user freed it.
+
+```bash
+docker compose up --build -d
+docker compose ps -a
+```
+First full-stack run. `backend` became healthy and `frontend` correctly waited for it (`depends_on: condition: service_healthy`) before starting — confirms the startup-ordering requirement. However, `docker compose ps -a` showed `backend-tools`/`frontend-tools` also started and immediately exited (they have no `command`, so they default to Node's REPL with no stdin and exit 0) — noisy for a plain `up`, since those services are meant only for `docker compose run`.
+
+Fixed by adding `profiles: ["tools"]` to both `backend-tools` and `frontend-tools` in `docker-compose.yml`, so they're excluded from the default `docker compose up`/`ps` but still explicitly runnable via `docker compose run`.
+
+```bash
+docker compose down
+docker compose run --rm backend-tools node -e "console.log('tools still work')"
+```
+Confirmed the profile change doesn't break the Phase 2–7 workflow — `docker compose run` still starts a profiled service on demand even though it's excluded from `up`.
+
+```bash
+docker compose up -d
+docker compose ps
+```
+Restarted cleanly — only `backend`/`frontend` came up this time, both healthy/running.
+
+```bash
+curl -s -o /tmp/e2e-index.html -w "%{http_code}\n" http://localhost:3000/
+curl -s -w "\n%{http_code}\n" http://localhost:3001/api/health
+curl -s -w "\n%{http_code}\n" http://localhost:3000/api/health
+```
+End-to-end checks: frontend page serves `200` with the right title; backend responds `200` directly on `3001`; **but** the same request through the Nginx proxy (`localhost:3000/api/health`) returned `404 Cannot GET /api/` — the `health` segment of the path was being dropped.
+
+Root cause: Nginx's usual location-prefix rewriting (replacing the matched `/api/` prefix with the URI part of `proxy_pass`) doesn't apply when `proxy_pass`'s target is built from a variable (needed here for the request-time DNS resolution from Phase 7) — so `proxy_pass $backend_upstream/api/;` was literally sending `/api/` with nothing appended. Fixed in `nginx.conf` by dropping the URI suffix and instead appending `$request_uri` explicitly (`proxy_pass $backend_upstream$request_uri;`), which forwards the exact original path since the backend already uses the same `/api` prefix.
+
+```bash
+docker compose up -d --build frontend
+curl -s -w "\n%{http_code}\n" http://localhost:3000/api/health
+```
+Rebuilt just the frontend with the fix and reconfirmed: `/api/health` through the proxy now returns `200 {"status":"ok"}`.
+
+```bash
+docker compose exec backend sh -c "echo 'persistence-test' > /app/data/marker.txt && cat /app/data/marker.txt"
+docker compose restart backend
+docker compose exec backend cat /app/data/marker.txt
+```
+SQLite volume persistence check #1: wrote a marker file into `/app/data` (the `sqlite-data` volume mount), restarted just the backend container, confirmed the file survived.
+
+```bash
+docker compose down
+docker compose up -d
+docker compose exec backend cat /app/data/marker.txt
+docker compose exec backend rm /app/data/marker.txt
+```
+SQLite volume persistence check #2 (stronger): full `down` (removes containers) then `up` (recreates them) — confirms the volume itself, not just the container, is what's persisting the data. Marker file still present; removed it afterward as cleanup.
+
+```bash
+docker compose down
+```
+Stopped the stack after verification completed.
