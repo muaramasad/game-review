@@ -130,3 +130,17 @@ docker run --rm game-review-frontend:phase7 nginx -t
 docker rmi game-review-frontend:phase7
 ```
 First attempt: added `location /api/ { proxy_pass http://backend:3001/api/; ... }` to `nginx.conf` and rebuilt. `nginx -t` failed with `host not found in upstream "backend"` — with a static hostname, Nginx resolves it at config-load/startup time, so the frontend container would fail to boot whenever the backend isn't already up (a classic Compose startup-race issue, and directly relevant to the "frontend shouldn't fail if backend is slower to start" requirement). Fixed by switching to a variable-based `proxy_pass` with Docker's embedded DNS resolver (`resolver 127.0.0.11 valid=10s; set $backend_upstream http://backend:3001; proxy_pass $backend_upstream/api/;`), which defers hostname resolution to request time instead of startup time. Rebuilt and reran `nginx -t` — now passes even with no `backend` host reachable, since resolution isn't attempted until an actual `/api/*` request comes in. Full proxying behavior (an actual `backend` container to reach) gets verified in Phase 9 once both services run together under Compose.
+
+---
+
+## Phase 8 — Configure Docker Compose (backend + frontend + volume)
+
+```bash
+docker run --rm node:20-alpine which wget
+```
+Confirmed `wget` (via BusyBox) is present in the `node:20-alpine` base image, needed for the backend service's Compose healthcheck (`wget -qO- http://localhost:3001/api/health`).
+
+```bash
+docker compose config
+```
+Validated the updated `docker-compose.yml` after adding the `backend`/`frontend` runtime services and the `sqlite-data` named volume (mounted at `/app/data` on `backend`). Confirms Compose parses the healthcheck, `depends_on: condition: service_healthy`, port mappings (`3001:3001`, `3000:80`), and volume correctly. Actually starting the stack (`docker compose up --build`) is deferred to Phase 9, where startup ordering, healthcheck timing, and the live Nginx→backend proxy get verified together.
