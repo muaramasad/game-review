@@ -383,3 +383,32 @@ Verified all three endpoints against the real seeded data (5 games, correct nest
 docker compose down
 ```
 Stopped the stack after verification.
+
+---
+
+## Phase 15 — Implement Reviews API
+
+```bash
+docker compose run --rm backend-tools npm run build
+```
+Created `ReviewsController` (`POST /api/games/:gameId/reviews`) → `ReviewsService` → TypeORM repositories, registered via `ReviewsModule`. `CreateReviewDto` is plain fields for now (no `class-validator` decorators yet — that's Phase 16). Following PLAN.md's diagram, `ReviewsService` injects the `Game` repository directly (not `GamesService`) to check the game exists before creating a review, keeping `ReviewsModule` decoupled from `GamesModule`. Compiled cleanly.
+
+```bash
+docker compose down -v
+docker compose up -d --build
+```
+Fresh start (volume removed) so the seed reruns and the new endpoint can be tested against real data.
+
+```bash
+curl -s http://localhost:3001/api/games/1/reviews   # baseline: 2 reviews
+curl -s -X POST http://localhost:3001/api/games/1/reviews -H "Content-Type: application/json" -d '{"reviewerName":"John","rating":5,"text":"Amazing game."}'
+curl -s http://localhost:3001/api/games/1/reviews   # confirm new review present
+curl -s -X POST http://localhost:3001/api/games/999/reviews -H "Content-Type: application/json" -d '{...}'
+```
+Directly tested the PLAN.md-required integration flow: `POST /api/games/:id/reviews` → `GET /api/games/:id/reviews` → new review present, with **no server restart** in between. Confirmed `201` on create, the new review appears first (newest-first ordering) in the very next GET, and `404` when posting to a nonexistent game.
+
+```bash
+curl -s -X POST http://localhost:3000/api/games/2/reviews -H "Content-Type: application/json" -d '{...}'
+docker compose down
+```
+Confirmed the same POST flow works through the Nginx proxy on port `3000`, not just hitting the backend directly. Stack torn down after.

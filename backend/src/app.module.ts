@@ -6,6 +6,7 @@ import { getDatabasePath } from './database/database-path';
 import { Game } from './games/entities/game.entity';
 import { Review } from './reviews/entities/review.entity';
 import { GamesModule } from './games/games.module';
+import { ReviewsModule } from './reviews/reviews.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { GamesModule } from './games/games.module';
       synchronize: true,
     }),
     GamesModule,
+    ReviewsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
