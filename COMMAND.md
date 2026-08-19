@@ -517,3 +517,23 @@ curl -s -w "\n%{http_code}\n" http://localhost:3000/api/games/999
 docker compose down
 ```
 Verified the data the page will render (`/api/games/1` through Nginx), the deep route `/games/1` serves the SPA shell correctly, the bundle contains the expected templated fetch call, and a nonexistent game returns `404` with a message the page's `catch` block will surface (not crash). Same caveat as Phase 18: no browser tool available this session, so the actual rendered/click-through experience wasn't visually confirmed.
+
+---
+
+## Phase 20 — Build Review List
+
+```bash
+docker compose run --rm frontend-tools npm run build
+```
+Added `types/review.ts` (`Review` interface matching the backend entity), `fetchReviews(gameId)` to `services/api.ts`, and `components/ReviewList.tsx` (renders reviewer name, rating, text, formatted created date per review, with an empty-state message). Wired into `GameDetailsPage`: fetches game + reviews together via `Promise.all`, replaces the "Reviews coming soon" placeholder with `<ReviewList reviews={reviews} />`. Build succeeded.
+
+```bash
+docker compose down -v
+docker compose up -d --build
+curl -s http://localhost:3000/api/games/1/reviews
+BUNDLE=$(curl -s http://localhost:3000/ | grep -o '/assets/index-[^"]*\.js')
+curl -s "http://localhost:3000$BUNDLE" | grep -o '/reviews`)'
+curl -s "http://localhost:3000$BUNDLE" | grep -o "reviewerName"
+docker compose down
+```
+Verified the real reviews data through Nginx, and that the built bundle contains both the reviews-fetching call and the `reviewerName` field reference (confirms `ReviewList`'s rendering logic made it into the production build). Same caveat as prior frontend phases: no browser tool available, so only network/bundle-level plumbing was confirmed, not the visual render.
