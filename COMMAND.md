@@ -450,3 +450,23 @@ curl ... POST /api/games/999/reviews  # valid payload, nonexistent game
 docker compose down
 ```
 Confirmed ordering: a validation-passing payload against a nonexistent game still correctly returns `404` (not `400`) — the existence check in `ReviewsService` runs after DTO validation, so the right error type surfaces for each failure mode. Stack torn down after.
+
+---
+
+## Phase 17 — Write backend tests
+
+Wrote `test/games.e2e-spec.ts` (3 tests: list games, get existing game, 404 for nonexistent) and `test/reviews.e2e-spec.ts` (7 tests: create valid review, reject invalid rating, reject missing reviewer name, reject missing text, reject review for nonexistent game, retrieve reviews for a game, and the PLAN.md-required integration flow — POST review → GET reviews → new review present, no restart).
+
+Chose e2e (real HTTP requests via `supertest` against a `Test.createTestingModule` app) over isolated unit tests with mocked repositories, because the validation-rejection tests PLAN.md asks for are only meaningful at the HTTP layer — `ValidationPipe` runs on incoming requests, not inside `ReviewsService`, so calling the service directly would never exercise `class-validator` at all. Each spec builds a minimal test module (`TypeOrmModule.forRoot` pointed at an in-memory `better-sqlite3` DB + `GamesModule` + `ReviewsModule`, not the full `AppModule`) so tests run isolated from the real dev/production database, with the same `ValidationPipe` config as `main.ts`. Tables are cleared between tests (`Review` before `Game`, respecting the foreign key) rather than recreating the DataSource each time, for speed.
+
+```bash
+docker compose run --rm backend-tools npm run test:e2e
+```
+All 11 e2e tests pass (3 games + 7 reviews + the pre-existing 1 health-check e2e test), within PLAN.md's 8–12 target for the games/reviews tests specifically (10).
+
+```bash
+docker compose run --rm backend-tools npm test
+```
+Confirmed the existing unit test suite (health check) still passes unaffected.
+
+Confirmed `test/` is excluded from the production build (`tsconfig.build.json`'s `exclude`), so these new spec files don't affect the Docker image.
