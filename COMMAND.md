@@ -412,3 +412,41 @@ curl -s -X POST http://localhost:3000/api/games/2/reviews -H "Content-Type: appl
 docker compose down
 ```
 Confirmed the same POST flow works through the Nginx proxy on port `3000`, not just hitting the backend directly. Stack torn down after.
+
+---
+
+## Phase 16 — Add validation
+
+```bash
+docker compose run --rm backend-tools npm install class-validator class-transformer
+```
+Installed the two packages needed for DTO validation.
+
+```bash
+docker compose run --rm backend-tools npm run build
+```
+Added decorators to `CreateReviewDto` (`@IsString @IsNotEmpty reviewerName`, `@IsInt @Min(1) @Max(5) rating`, `@IsString @IsNotEmpty text`) and registered a global `ValidationPipe` in `main.ts` (`whitelist: true, forbidNonWhitelisted: true, transform: true`). Compiled cleanly.
+
+```bash
+docker compose down -v
+docker compose up -d --build
+```
+Fresh start to test validation against the real running API.
+
+```bash
+curl ... POST /api/games/1/reviews  # valid payload
+curl ... POST /api/games/1/reviews  # rating=0
+curl ... POST /api/games/1/reviews  # rating=6
+curl ... POST /api/games/1/reviews  # rating="abc"
+curl ... POST /api/games/1/reviews  # reviewerName=""
+curl ... POST /api/games/1/reviews  # text=""
+curl ... POST /api/games/1/reviews  # missing reviewerName
+curl ... POST /api/games/1/reviews  # extra unknown field "hacked":true
+```
+Ran every invalid example named in PLAN.md §10 plus two extra edge cases (missing field, unexpected field). All rejected with `400` and a clear message; the valid payload still returns `201`; `forbidNonWhitelisted` correctly rejects the unexpected `hacked` field too.
+
+```bash
+curl ... POST /api/games/999/reviews  # valid payload, nonexistent game
+docker compose down
+```
+Confirmed ordering: a validation-passing payload against a nonexistent game still correctly returns `404` (not `400`) — the existence check in `ReviewsService` runs after DTO validation, so the right error type surfaces for each failure mode. Stack torn down after.
