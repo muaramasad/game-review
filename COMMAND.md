@@ -95,3 +95,27 @@ docker images game-review-backend:phase5
 docker rmi game-review-backend:phase5
 ```
 Checked the built image size (226MB) and removed the temporary `:phase5` tag/image after the smoke test — it isn't needed once Compose builds its own image from the Dockerfile in Phase 8.
+
+---
+
+## Phase 6 — Dockerize frontend
+
+```bash
+docker build -t game-review-frontend:phase6 ./frontend
+```
+Builds the multi-stage `frontend/Dockerfile`. Stage 1 (`build`) installs deps and runs `npm run build` (`tsc -b && vite build`) to produce `dist/`; stage 2 (`production`) is `nginx:alpine`, copying the built static files into `/usr/share/nginx/html` and a minimal `nginx.conf` (serves `/`, falls back to `index.html` for client-side routes — the `/api/*` proxy block gets added in Phase 7). Tagged `:phase6` as a temporary tag for this manual verification.
+
+```bash
+docker run --rm -d -p 8081:80 --name frontend-image-smoketest game-review-frontend:phase6
+sleep 3
+curl -s -o /tmp/frontend3.html -w "%{http_code}\n" http://127.0.0.1:8081/
+curl -s -o /tmp/frontend4.html -w "%{http_code}\n" http://127.0.0.1:8081/some/deep/route
+docker rm -f frontend-image-smoketest
+```
+Runs the built Nginx image standalone. Confirms the root page serves `200` with the expected `<title>`, and that an arbitrary deep route also returns `200` (SPA fallback to `index.html` works, not a 404).
+
+```bash
+docker images game-review-frontend:phase6
+docker rmi game-review-frontend:phase6
+```
+Checked image size (92MB) and removed the temporary `:phase6` tag/image — Compose builds its own image from the Dockerfile in Phase 8.
