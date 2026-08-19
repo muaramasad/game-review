@@ -311,3 +311,44 @@ Confirmed: `review` table has the expected columns (`gameId` NOT NULL INTEGER, `
 rm backend/verify-review-entity.ts
 ```
 Removed the throwaway verification script.
+
+---
+
+## Phase 13 — Create seed data
+
+```bash
+docker compose run --rm backend-tools npm run build
+```
+Created `backend/src/database/seed.ts` — `seedDatabase(dataSource)` seeds 5 games (Elden Ring, Hades, The Witcher 3, Cyberpunk 2077, Stardew Valley) with 2–3 reviews each, skipping entirely if any games already exist (idempotency check via `gameRepo.count() > 0`). Wired into `main.ts`: called with `app.get(DataSource)` after `NestFactory.create`, before `app.listen()`. Compile passed cleanly.
+
+```bash
+docker compose run --rm backend-tools npx ts-node verify-seed.ts
+```
+Throwaway script (`backend/verify-seed.ts`, deleted after): ran `seedDatabase()` twice against the same in-memory DB, compared row counts before/after the second call. Confirmed idempotent — both runs left exactly 5 games / 12 reviews, with correct per-game review counts.
+
+```bash
+docker compose up -d --build
+docker compose exec backend sh -c "node -e \"... require('better-sqlite3')('/app/data/game-review.sqlite') ...\""
+```
+First real end-to-end attempt: `backend` container exited with `EntityMetadataNotFoundError: No metadata for "Game" was found` at `seedDatabase()`. Root cause: `TypeOrmModule.forRoot`'s `autoLoadEntities: true` only registers entities that get referenced via `TypeOrmModule.forFeature([...])` in some imported module — and `GamesModule`/`ReviewsModule` don't exist yet (that's Phase 14–15), so TypeORM had no metadata for `Game`/`Review` registered at all when `seedDatabase()` tried to use their repositories.
+
+Fixed by adding `entities: [Game, Review]` explicitly to `TypeOrmModule.forRoot()` in `app.module.ts`, alongside the existing `autoLoadEntities: true` (which will take over once the feature modules exist and register the same entities via `forFeature`).
+
+```bash
+docker compose down
+docker volume rm game-review_sqlite-data
+docker compose up -d --build
+```
+Removed the stale volume from the failed attempt (tables never got created before the crash) and restarted clean.
+
+```bash
+docker compose exec backend sh -c "node -e \"const db=require('better-sqlite3')('/app/data/game-review.sqlite'); console.log(db.prepare('SELECT COUNT(*) as c FROM game').get()); console.log(db.prepare('SELECT COUNT(*) as c FROM review').get()); console.log(db.prepare('SELECT title FROM game').all());\""
+```
+Queried the real volume-backed sqlite file directly (bypassing the API, since no Games API exists yet). Confirmed 5 games / 12 reviews, with the expected titles.
+
+```bash
+docker compose restart backend
+docker compose exec backend sh -c "node -e \"... SELECT COUNT(*) ...\""
+docker compose down
+```
+Restarted the backend container and re-queried — counts unchanged (still 5 games / 12 reviews), confirming the seed is idempotent against the real Docker volume, not just in the in-memory test. Stack torn down after.

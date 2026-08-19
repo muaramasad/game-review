@@ -3,12 +3,15 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { getDatabasePath } from './database/database-path';
+import { Game } from './games/entities/game.entity';
+import { Review } from './reviews/entities/review.entity';
 
 @Module({
   imports: [
     TypeOrmModule.forRoot({
       type: 'better-sqlite3',
       database: getDatabasePath(),
+      entities: [Game, Review],
       autoLoadEntities: true,
       synchronize: true,
     }),
