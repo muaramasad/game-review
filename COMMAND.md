@@ -288,3 +288,26 @@ Ran a throwaway script (`backend/verify-game-entity.ts`, deleted after) that ope
 rm backend/verify-game-entity.ts
 ```
 Removed the throwaway verification script — not part of the permanent codebase.
+
+---
+
+## Phase 12 — Create Review entity
+
+```bash
+docker compose run --rm backend-tools npm run build
+```
+Created `backend/src/reviews/entities/review.entity.ts` (`id`, `gameId`, `reviewerName`, `rating`, `text`, `createdAt`, plus a `@ManyToOne` back to `Game`) and added the `@OneToMany(() => Review, ...) reviews?: Review[]` relation to `game.entity.ts`. Initial compile flagged `reviews: Review[]` under `strictPropertyInitialization` (no initializer) — fixed by making it optional (`reviews?: Review[]`), which is also more accurate since it's only populated when eagerly joined. Rebuild passed cleanly after.
+
+```bash
+docker compose run --rm backend-tools npx ts-node verify-review-entity.ts
+```
+Same throwaway-script approach as Phase 11 (`backend/verify-review-entity.ts`, deleted after), this time with both entities: checked `PRAGMA table_info(review)` and `PRAGMA foreign_key_list(review)`, then saved a `Game` + a `Review` referencing it and queried the game back with its reviews joined.
+
+First run failed to compile: `relations: ['reviews']` — TypeORM 1.x changed `FindOptionsRelations` from a string array to an object form (`relations: { reviews: true }`). Fixed the script and reran (noting this for the real `GamesService` query in Phase 14, which will need the same object-form `relations`).
+
+Confirmed: `review` table has the expected columns (`gameId` NOT NULL INTEGER, `rating` INTEGER, `text`/`createdAt` etc.), the foreign key is correctly wired with `ON DELETE CASCADE` to `game.id`, and the join query returns the game with its nested `reviews` array populated correctly.
+
+```bash
+rm backend/verify-review-entity.ts
+```
+Removed the throwaway verification script.
