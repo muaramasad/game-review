@@ -269,3 +269,22 @@ Verified the local fallback path too: booting the full app via `backend-tools` (
 rm -rf backend/data
 ```
 Removed the leftover local sqlite file/dir created by the fallback-path smoke test (already covered by `.gitignore`, just tidying up).
+
+---
+
+## Phase 11 — Create Game entity
+
+```bash
+docker compose run --rm backend-tools npm run build
+```
+Confirmed `backend/src/games/entities/game.entity.ts` (fields: `id`, `title`, `genre`, `platform`, `description`) compiles cleanly with no TypeScript errors.
+
+```bash
+docker compose run --rm backend-tools npx ts-node verify-game-entity.ts
+```
+Ran a throwaway script (`backend/verify-game-entity.ts`, deleted after) that opened an in-memory `better-sqlite3` DataSource with just the `Game` entity, ran `synchronize`, and inspected `PRAGMA table_info(game)` plus a round-trip save. Confirmed the generated schema matches expectations: `id` (INTEGER PK), `title` (`NOT NULL`), `genre`/`platform`/`description` (nullable), and a save/read round-trip works correctly.
+
+```bash
+rm backend/verify-game-entity.ts
+```
+Removed the throwaway verification script — not part of the permanent codebase.
