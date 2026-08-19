@@ -119,3 +119,14 @@ docker images game-review-frontend:phase6
 docker rmi game-review-frontend:phase6
 ```
 Checked image size (92MB) and removed the temporary `:phase6` tag/image — Compose builds its own image from the Dockerfile in Phase 8.
+
+---
+
+## Phase 7 — Configure Nginx
+
+```bash
+docker build -t game-review-frontend:phase7 ./frontend
+docker run --rm game-review-frontend:phase7 nginx -t
+docker rmi game-review-frontend:phase7
+```
+First attempt: added `location /api/ { proxy_pass http://backend:3001/api/; ... }` to `nginx.conf` and rebuilt. `nginx -t` failed with `host not found in upstream "backend"` — with a static hostname, Nginx resolves it at config-load/startup time, so the frontend container would fail to boot whenever the backend isn't already up (a classic Compose startup-race issue, and directly relevant to the "frontend shouldn't fail if backend is slower to start" requirement). Fixed by switching to a variable-based `proxy_pass` with Docker's embedded DNS resolver (`resolver 127.0.0.11 valid=10s; set $backend_upstream http://backend:3001; proxy_pass $backend_upstream/api/;`), which defers hostname resolution to request time instead of startup time. Rebuilt and reran `nginx -t` — now passes even with no `backend` host reachable, since resolution isn't attempted until an actual `/api/*` request comes in. Full proxying behavior (an actual `backend` container to reach) gets verified in Phase 9 once both services run together under Compose.
