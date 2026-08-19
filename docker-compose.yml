@@ -1,0 +1,12 @@
+services:
+  backend-tools:
+    image: node:20
+    working_dir: /app
+    volumes:
+      - ./backend:/app
+
+  frontend-tools:
+    image: node:20
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
