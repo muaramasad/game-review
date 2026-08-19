@@ -209,3 +209,63 @@ SQLite volume persistence check #2 (stronger): full `down` (removes containers) 
 docker compose down
 ```
 Stopped the stack after verification completed.
+
+---
+
+## Phase 10 — Configure TypeORM + SQLite
+
+```bash
+docker compose run --rm backend-tools npm install @nestjs/typeorm typeorm sqlite3
+```
+Installed `@nestjs/typeorm` (NestJS integration), `typeorm` (ORM), and initially `sqlite3` (driver). Wired up `TypeOrmModule.forRoot({ type: 'sqlite', ... })` in `app.module.ts` and a `getDatabasePath()` helper (`src/database/database-path.ts`) that reads `DATABASE_PATH` env var, falling back to a local `backend/data/game-review.sqlite`, creating the parent directory if missing.
+
+```bash
+docker compose build backend
+```
+First build attempt failed at `nest build` (TypeScript compile) — the installed `typeorm` resolved to version `1.1.0` (confirmed legitimate via `npm view typeorm version/description/repository.url`; TypeORM has since reached a 1.x stable release), which **removed the old `sqlite` driver type** (based on the long-unmaintained `sqlite3` package) in favor of `better-sqlite3`. TypeScript rejected `type: 'sqlite'` as not assignable.
+
+```bash
+docker compose run --rm backend-tools npm uninstall sqlite3
+docker compose run --rm backend-tools npm install better-sqlite3
+```
+Swapped the driver package. Updated `app.module.ts` to `type: 'better-sqlite3'`.
+
+```bash
+docker compose build backend
+```
+Second attempt failed differently — `npm ci --omit=dev` in the production stage errored compiling `better-sqlite3` from source (`node-gyp`: `Could not find any Python installation`). `better-sqlite3` has no prebuilt binary for this platform, so it falls back to a native build, which needs Python/make/g++ that the `node:20-alpine` base image doesn't include by default.
+
+Fixed by adding `RUN apk add --no-cache python3 make g++` to both stages of `backend/Dockerfile` (the `build` stage installs it as a regular dependency too, not just `production`'s `--omit=dev` step).
+
+```bash
+docker compose build backend
+docker compose up -d
+docker compose ps
+docker compose logs backend
+```
+Build succeeded. Full stack started; backend logs show `TypeOrmCoreModule dependencies initialized` — connection opens cleanly (no entities registered yet, so nothing to synchronize).
+
+```bash
+docker compose exec backend sh -c "ls -la /app/data/"
+curl -s -w "\n%{http_code}\n" http://localhost:3001/api/health
+docker compose down
+```
+Confirmed the actual `.sqlite` file was created inside the `sqlite-data` volume at the expected path, and `/api/health` still responds. Stack torn down after.
+
+```bash
+docker compose run --rm backend-tools npm test
+```
+Confirmed the existing unit test still passes unaffected (it tests `AppController` directly, not the full `AppModule`, so it doesn't touch TypeORM).
+
+```bash
+docker compose run --rm -d -p 3013:3001 --name backend-fallback-smoketest backend-tools npm run start
+sleep 6
+curl -s -w "\n%{http_code}\n" http://localhost:3013/api/health
+docker rm -f backend-fallback-smoketest
+```
+Verified the local fallback path too: booting the full app via `backend-tools` (no `sqlite-data` volume mounted there) still connects successfully, creating `backend/data/game-review.sqlite` on the bind-mounted host folder via `getDatabasePath()`'s `mkdirSync`.
+
+```bash
+rm -rf backend/data
+```
+Removed the leftover local sqlite file/dir created by the fallback-path smoke test (already covered by `.gitignore`, just tidying up).

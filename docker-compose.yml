@@ -17,6 +17,8 @@ services:
     build: ./backend
     ports:
       - "3001:3001"
+    environment:
+      DATABASE_PATH: /app/data/game-review.sqlite
     volumes:
       - sqlite-data:/app/data
     healthcheck:
