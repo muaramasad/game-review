@@ -352,3 +352,34 @@ docker compose exec backend sh -c "node -e \"... SELECT COUNT(*) ...\""
 docker compose down
 ```
 Restarted the backend container and re-queried — counts unchanged (still 5 games / 12 reviews), confirming the seed is idempotent against the real Docker volume, not just in the in-memory test. Stack torn down after.
+
+---
+
+## Phase 14 — Implement Games API
+
+```bash
+docker compose run --rm backend-tools npm run build
+```
+Created `GamesController` → `GamesService` → TypeORM repositories, registered via `GamesModule` (`TypeOrmModule.forFeature([Game, Review])`) and imported into `AppModule`. Routes: `GET /api/games`, `GET /api/games/:id` (404 via `NotFoundException` if missing), `GET /api/games/:id/reviews` (reuses `findOne` to validate the game exists first, then queries reviews ordered newest-first). Compiled cleanly.
+
+```bash
+docker compose down -v
+docker compose up -d --build
+```
+Fresh start with the volume removed (`-v`), so the seed runs again and the API can be tested against real seeded data end to end.
+
+```bash
+curl -s -w "\n%{http_code}\n" http://localhost:3001/api/games
+curl -s -w "\n%{http_code}\n" http://localhost:3001/api/games/1
+curl -s -w "\n%{http_code}\n" http://localhost:3001/api/games/1/reviews
+curl -s -w "\n%{http_code}\n" http://localhost:3001/api/games/999
+curl -s -w "\n%{http_code}\n" http://localhost:3001/api/games/999/reviews
+curl -s -w "\n%{http_code}\n" http://localhost:3000/api/games
+curl -s -w "\n%{http_code}\n" http://localhost:3001/api/games/abc
+```
+Verified all three endpoints against the real seeded data (5 games, correct nested reviews for game 1), confirmed `404` for a nonexistent game on both `/games/:id` and `/games/:id/reviews`, confirmed the same data is reachable through the Nginx proxy on port `3000`, and confirmed `ParseIntPipe` rejects a non-numeric id with `400`.
+
+```bash
+docker compose down
+```
+Stopped the stack after verification.
