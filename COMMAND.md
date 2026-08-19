@@ -496,3 +496,24 @@ curl -s "http://localhost:3000$BUNDLE" | grep -o "fetch(\"/api/games\")"
 docker compose down
 ```
 Fresh full-stack verification: index page serves, `/api/games` returns real seeded data through the Nginx proxy, the deep route `/games/1` correctly falls back to the SPA (`200`, not `404`), and the built JS bundle contains the exact `fetch("/api/games")` call. **Not verified**: actual rendered output / click-through in a browser — no browser automation tool is available in this session, so only the network/bundle-level plumbing was confirmed, not the visual render.
+
+---
+
+## Phase 19 — Build Game Details
+
+```bash
+docker compose run --rm frontend-tools npm run build
+```
+Added `fetchGame(id)` to `services/api.ts`, replaced the Phase 18 placeholder `GameDetailsPage` with the real thing: fetches on mount via `useParams`, loading/error states, renders `title`/`genre`/`platform`/`description`. Left "Reviews" and "Leave a review" as placeholder sections — those are Phase 20/21's dedicated components, building them now would mean redoing the work. Build succeeded.
+
+```bash
+docker compose down -v
+docker compose up -d --build
+curl -s http://localhost:3000/api/games/1
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3000/games/1
+BUNDLE=$(curl -s http://localhost:3000/ | grep -o '/assets/index-[^"]*\.js')
+curl -s "http://localhost:3000$BUNDLE" | grep -o 'fetch(`/api/games/\${[a-zA-Z]*}`)'
+curl -s -w "\n%{http_code}\n" http://localhost:3000/api/games/999
+docker compose down
+```
+Verified the data the page will render (`/api/games/1` through Nginx), the deep route `/games/1` serves the SPA shell correctly, the bundle contains the expected templated fetch call, and a nonexistent game returns `404` with a message the page's `catch` block will surface (not crash). Same caveat as Phase 18: no browser tool available this session, so the actual rendered/click-through experience wasn't visually confirmed.
