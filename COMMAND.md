@@ -560,3 +560,26 @@ curl -s "http://localhost:3000$BUNDLE" | grep -o "Submit Review"
 docker compose down
 ```
 Verified the exact request path `ReviewForm` uses: `POST` through Nginx succeeds (`201`) and the new review immediately appears first in the next `GET`; an invalid payload returns `{"message":["reviewerName should not be empty"], ...}` — the array-shaped error `createReview`'s parsing logic was built to handle. Confirmed the bundle contains the `POST` request and the "Submit Review" button text. Same caveat as prior frontend phases: no browser tool available, so the visual render/click-through wasn't confirmed directly.
+
+---
+
+## Phase 22 — Add frontend tests
+
+```bash
+docker compose run --rm frontend-tools npm install -D vitest @testing-library/react @testing-library/jest-dom @testing-library/user-event jsdom
+```
+Installed Vitest + React Testing Library (the standard pairing for a Vite project — reuses the same Vite config/transform pipeline as the dev server and production build, unlike pulling in a separate Jest+Babel setup).
+
+Configured `test` in `vite.config.ts` (`environment: 'jsdom'`, `globals: true`, `setupFiles: './src/test/setup.ts'`), switching its `defineConfig` import from `'vite'` to `'vitest/config'` so TypeScript recognizes the `test` key. Added `src/test/setup.ts` (imports `@testing-library/jest-dom/vitest` for the extended matchers) and a `test` script (`vitest run`) to `package.json`.
+
+Wrote `src/components/ReviewForm.test.tsx` (4 tests — matching PLAN.md §13's priorities: renders all fields; rating `<select>` only offers 1–5; required fields block submission (native HTML5 `required`, no `createReview` call); submit sends the correct payload and reports the created review) and `src/pages/GameDetailsPage.test.tsx` (2 tests — game info + existing reviews render; a newly submitted review appears immediately via local state update, confirmed by asserting `fetchReviews` was called only once, i.e. no re-fetch/reload happened). `services/api` is mocked with `vi.mock` in both files so tests don't hit a real network/backend.
+
+```bash
+docker compose run --rm frontend-tools npm test
+```
+All 6 tests pass. Some harmless Vitest 4 internal deprecation warnings (esbuild vs. oxc) appeared but don't affect results — Vitest bundles its own Vite instance separate from the pinned Vite 5 used for `npm run build`.
+
+```bash
+docker compose run --rm frontend-tools npm run build
+```
+Confirmed the production build still works and produces an identically-hashed bundle to before the test additions, confirming the new `*.test.tsx` files aren't pulled into the shipped bundle (they're unreachable from `main.tsx`'s import graph).
