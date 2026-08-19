@@ -4,6 +4,7 @@ import { fetchGame, fetchReviews } from '../services/api';
 import type { Game } from '../types/game';
 import type { Review } from '../types/review';
 import { ReviewList } from '../components/ReviewList';
+import { ReviewForm } from '../components/ReviewForm';
 
 export function GameDetailsPage() {
   const { id } = useParams();
@@ -46,7 +47,10 @@ export function GameDetailsPage() {
 
           <section>
             <h2>Leave a review</h2>
-            <p>Review form coming soon.</p>
+            <ReviewForm
+              gameId={id!}
+              onReviewCreated={(review) => setReviews((prev) => [review, ...prev])}
+            />
           </section>
         </>
       )}

@@ -537,3 +537,26 @@ curl -s "http://localhost:3000$BUNDLE" | grep -o "reviewerName"
 docker compose down
 ```
 Verified the real reviews data through Nginx, and that the built bundle contains both the reviews-fetching call and the `reviewerName` field reference (confirms `ReviewList`'s rendering logic made it into the production build). Same caveat as prior frontend phases: no browser tool available, so only network/bundle-level plumbing was confirmed, not the visual render.
+
+---
+
+## Phase 21 — Build Review Form
+
+```bash
+docker compose run --rm frontend-tools npm run build
+```
+Added `createReview(gameId, payload)` to `services/api.ts` (POSTs, and on a non-OK response parses the backend's error body — `message` can be a string or, for `class-validator` failures, an array of strings, so it joins arrays into one message). Built `components/ReviewForm.tsx`: controlled inputs for reviewer name (text, required), rating (`<select>` 1–5, inherently valid client-side), review text (textarea, required), a "Submit Review" button with a submitting/disabled state and inline error display. Wired into `GameDetailsPage`: on success, the returned review is **prepended** to local `reviews` state directly (not re-fetched), so it appears immediately — matching the backend's newest-first ordering and satisfying PLAN.md's "no restart needed" requirement. Build succeeded.
+
+```bash
+docker compose down -v
+docker compose up -d --build
+curl -s http://localhost:3000/api/games/1/reviews   # baseline: 2 reviews
+curl -s -X POST http://localhost:3000/api/games/1/reviews -H "Content-Type: application/json" -d '{"reviewerName":"FormTester","rating":4,"text":"Testing the review form flow."}'
+curl -s http://localhost:3000/api/games/1/reviews   # new review present, newest-first
+curl -s -X POST http://localhost:3000/api/games/1/reviews -H "Content-Type: application/json" -d '{"reviewerName":"","rating":5,"text":"x"}'
+BUNDLE=$(curl -s http://localhost:3000/ | grep -o '/assets/index-[^"]*\.js')
+curl -s "http://localhost:3000$BUNDLE" | grep -o 'method:"POST"'
+curl -s "http://localhost:3000$BUNDLE" | grep -o "Submit Review"
+docker compose down
+```
+Verified the exact request path `ReviewForm` uses: `POST` through Nginx succeeds (`201`) and the new review immediately appears first in the next `GET`; an invalid payload returns `{"message":["reviewerName should not be empty"], ...}` — the array-shaped error `createReview`'s parsing logic was built to handle. Confirmed the bundle contains the `POST` request and the "Submit Review" button text. Same caveat as prior frontend phases: no browser tool available, so the visual render/click-through wasn't confirmed directly.

@@ -24,3 +24,28 @@ export async function fetchReviews(gameId: string): Promise<Review[]> {
   }
   return res.json();
 }
+
+export interface CreateReviewPayload {
+  reviewerName: string;
+  rating: number;
+  text: string;
+}
+
+export async function createReview(
+  gameId: string,
+  payload: CreateReviewPayload,
+): Promise<Review> {
+  const res = await fetch(`/api/games/${gameId}/reviews`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    const message = Array.isArray(body?.message)
+      ? body.message.join(', ')
+      : (body?.message ?? `Failed to submit review (${res.status})`);
+    throw new Error(message);
+  }
+  return res.json();
+}
