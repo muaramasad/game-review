@@ -71,30 +71,30 @@ describe('Reviews (e2e)', () => {
     });
   });
 
-  it('rejects an invalid rating', async () => {
+  it.each([0, 6, 'abc'])('rejects an invalid rating (%p)', async (rating) => {
     const game = await createGame();
 
     await request(app.getHttpServer())
       .post(`/api/games/${game.id}/reviews`)
-      .send({ reviewerName: 'John', rating: 6, text: 'Amazing game.' })
+      .send({ reviewerName: 'John', rating, text: 'Amazing game.' })
       .expect(400);
   });
 
-  it('rejects a missing reviewer name', async () => {
+  it.each([undefined, ''])('rejects a missing or empty reviewer name (%p)', async (reviewerName) => {
     const game = await createGame();
 
     await request(app.getHttpServer())
       .post(`/api/games/${game.id}/reviews`)
-      .send({ rating: 5, text: 'Amazing game.' })
+      .send({ reviewerName, rating: 5, text: 'Amazing game.' })
       .expect(400);
   });
 
-  it('rejects missing review text', async () => {
+  it.each([undefined, ''])('rejects missing or empty review text (%p)', async (text) => {
     const game = await createGame();
 
     await request(app.getHttpServer())
       .post(`/api/games/${game.id}/reviews`)
-      .send({ reviewerName: 'John', rating: 5 })
+      .send({ reviewerName: 'John', rating: 5, text })
       .expect(400);
   });
 

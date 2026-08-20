@@ -78,4 +78,12 @@ describe('Games (e2e)', () => {
 
     expect(res.body.statusCode).toBe(404);
   });
+
+  it('GET /api/games/:id/reviews returns 404 for a nonexistent game', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/api/games/999/reviews')
+      .expect(404);
+
+    expect(res.body.statusCode).toBe(404);
+  });
 });

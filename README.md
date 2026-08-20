@@ -69,6 +69,8 @@ No Node.js, npm, or any other tooling needs to be installed on the host.
 ## Run
 
 ```bash
+git clone git@github.com:muaramasad/game-review.git
+cd game-review
 docker compose up --build
 ```
 
