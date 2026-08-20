@@ -33,38 +33,37 @@ export function ReviewForm({ gameId, onReviewCreated }: ReviewFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form className="review-form" onSubmit={handleSubmit}>
       {error && <p role="alert">Error: {error}</p>}
 
-      <label>
-        Reviewer name
+      <div className="field">
+        <label htmlFor="reviewerName">Reviewer name</label>
         <input
-          type="text"
+          id="reviewerName"
           value={reviewerName}
           onChange={(e) => setReviewerName(e.target.value)}
           required
         />
-      </label>
+      </div>
 
-      <label>
-        Rating
-        <select value={rating} onChange={(e) => setRating(Number(e.target.value))}>
+      <div className="field">
+        <label htmlFor="rating">Rating</label>
+        <select id="rating" value={rating} onChange={(e) => setRating(Number(e.target.value))}>
           {[1, 2, 3, 4, 5].map((value) => (
-            <option key={value} value={value}>
-              {value}
-            </option>
+            <option key={value} value={value}>{value}</option>
           ))}
         </select>
-      </label>
+      </div>
 
-      <label>
-        Review text
+      <div className="field">
+        <label htmlFor="reviewText">Review text</label>
         <textarea
+          id="reviewText"
           value={text}
           onChange={(e) => setText(e.target.value)}
           required
         />
-      </label>
+      </div>
 
       <button type="submit" disabled={submitting}>
         {submitting ? 'Submitting...' : 'Submit Review'}

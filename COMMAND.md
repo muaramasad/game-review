@@ -583,3 +583,186 @@ All 6 tests pass. Some harmless Vitest 4 internal deprecation warnings (esbuild 
 docker compose run --rm frontend-tools npm run build
 ```
 Confirmed the production build still works and produces an identically-hashed bundle to before the test additions, confirming the new `*.test.tsx` files aren't pulled into the shipped bundle (they're unreachable from `main.tsx`'s import graph).
+
+---
+
+## Phase 23 — Write README
+
+Checked actual installed dependencies (`backend/package.json`, `frontend/package.json`) before writing, so the README's tech stack section reflects what's really in the project rather than PLAN.md's original aspirational list (e.g. `better-sqlite3` not `sqlite3`, `class-validator`/`class-transformer`, Vitest not Jest on the frontend).
+
+Wrote `README.md` at the repo root covering: what the app does, architecture diagram, tech stack, requirements (Docker/Compose only), run instructions, test instructions, API reference with the validation rules, design decisions (why NestJS/React/SQLite via `better-sqlite3`/TypeORM/Compose/Nginx), and honest "what could be improved" notes (migrations vs. `synchronize: true`, pagination, auth, rate limiting, CI).
+
+```bash
+docker compose down -v
+docker compose up --build -d
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3000/
+docker compose down
+```
+Verified the README's exact documented run command works from a clean state.
+
+```bash
+docker compose run --rm backend-tools npm test
+docker compose run --rm backend-tools npm run test:e2e
+docker compose run --rm frontend-tools npm test
+```
+Verified the README's exact documented test commands all run successfully as written (1 backend unit test, 11 backend e2e tests, 6 frontend tests).
+
+---
+
+## Phase 24 — Clean code/repository
+
+```bash
+rm -rf backend/data
+git status
+git ls-files | sort
+```
+Removed a stray leftover `backend/data/game-review.sqlite` from earlier manual testing (already correctly excluded by `.gitignore`/never tracked, just working-directory clutter). Reviewed `git status` (confirmed git was already initialized and phase-by-phase commits exist, matching the commit messages given throughout) and the full list of tracked files — clean, no `node_modules`/`dist`/`coverage`/build artifacts, no leftover throwaway `verify-*.ts` scripts.
+
+```bash
+git ls-files -z | xargs -0 grep -lIE "(AKIA[0-9A-Z]{16}|api[_-]?key|secret|password|token)" -i
+```
+Scanned all tracked files for potential secrets/credentials. Three matches, all false positives: `PHASE.md`/`PLAN.md` mentioning "no secrets" as a checklist item, and `backend/README.md`'s placeholder CircleCI badge URL (`?token=abc123def456`) from the unmodified NestJS scaffold template — not a real credential.
+
+Reviewed PLAN.md §21's anti-overengineering list (auth, Redux, Postgres/MySQL/Redis, Kafka, microservices, WebSockets, Kubernetes, GraphQL, CI/CD, cloud deployment, external APIs, complex design systems) — confirmed none of it crept into the project.
+
+Flagged that `backend/README.md` and `frontend/README.md` are still unmodified NestJS/Vite scaffold boilerplate (marketing badges/generic template text), not project docs — asked the user whether to delete, replace with a pointer to the root README, or leave as-is. **User chose to leave them as-is.**
+
+```bash
+git clone /Users/user/Documents/Developments/game-review <scratchpad>/clean-clone-test
+cd <scratchpad>/clean-clone-test
+docker compose up --build -d
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3000/
+curl -s http://localhost:3000/api/games
+curl -s http://localhost:3000/api/games/1/reviews
+curl -s -X POST http://localhost:3000/api/games/1/reviews -H "Content-Type: application/json" -d '{"reviewerName":"CleanCloneTest","rating":5,"text":"Works from a clean clone."}'
+curl -s http://localhost:3000/api/games/1/reviews
+```
+The most important check: cloned the actual git repo (not the working directory) into a scratch location to simulate exactly what a reviewer would do, and ran the full user journey against only what's actually committed. Confirmed `docker compose up --build` works from a truly clean checkout, seed data is present (5 games, 2 reviews on game 1), and submitting a review makes it immediately visible (3 reviews after POST) — matching the Phase 25 "final verification" checklist in PLAN.md, done early here as part of the cleanliness pass.
+
+```bash
+docker compose down -v
+rm -rf <scratchpad>/clean-clone-test
+```
+Tore down and removed the scratch clone.
+
+---
+
+## Phase 25 — Final end-to-end test
+
+```bash
+docker compose down -v
+docker compose up --build -d
+```
+Fresh full-stack start for the final comprehensive pass (against the current working directory, including not-yet-committed README/COMMAND.md updates — Phase 24 already specifically verified the committed-only clean-clone path).
+
+```bash
+curl -s http://localhost:3000/api/games                                    # 1. game list
+curl -s http://localhost:3000/api/games/3                                  # 2. select a game
+curl -s http://localhost:3000/api/games/3/reviews                          # 3. view its reviews
+curl -s -X POST http://localhost:3000/api/games/3/reviews -H "Content-Type: application/json" -d '{"reviewerName":"FinalCheck","rating":5,"text":"Verifying the complete user journey end to end."}'   # 4. submit a review
+curl -s http://localhost:3000/api/games/3/reviews                          # 5. new review appears immediately
+```
+Walked the exact user journey from PLAN.md §25's Definition of Done, step by step, against the running stack.
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3000/
+docker compose restart backend
+curl -s http://localhost:3000/api/games/3/reviews
+```
+Confirmed the frontend page serves, and that restarting just the backend container doesn't lose the review submitted moments earlier (SQLite volume persistence, re-confirmed at the end of the full build).
+
+```bash
+docker compose run --rm backend-tools npm test
+docker compose run --rm backend-tools npm run test:e2e
+docker compose run --rm frontend-tools npm test
+docker compose down
+```
+Ran every test suite one final time: 1 backend unit test, 11 backend e2e tests, 6 frontend tests — all 18 pass. Stack torn down after.
+
+**Final Quality Checklist review (PLAN.md §22):** Functionality (game list/details/reviews/submit/immediate-appearance/seed data) — all confirmed working end-to-end above. Backend (thin controllers, logic in services, separate entities, TypeORM, SQLite, validation, error handling, idempotent seed) — built and verified phase-by-phase (Phases 10–17). Tests (backend unit + e2e + frontend, covering creation/validation/nonexistent-game/retrieval) — all passing, confirmed again here. Docker (both images build, Compose starts everything with one command, no host Node.js needed, SQLite persists via volume, frontend on port 3000, API correctly proxied) — confirmed here and in Phase 24's clean-clone test. Documentation (README covers architecture/run/test/API/design decisions/limitations) — written in Phase 23. Repository (.gitignore correct, no secrets, no unnecessary generated files, clean-clone build verified) — audited in Phase 24.
+
+---
+
+## Post-plan cleanup — ReviewForm markup
+
+User flagged `ReviewForm.tsx`'s JSX as visually cluttered (each field wrapped in a nested `<label>` with inconsistent multi-line formatting). Refactored to `htmlFor`/`id` pairing instead of label nesting, tightened formatting (single-line `<option>`, consistent prop layout), no behavior change.
+
+```bash
+docker compose run --rm frontend-tools npm run build
+docker compose run --rm frontend-tools npm test
+```
+Confirmed the build still succeeds and all 6 frontend tests still pass — `getByLabelText` correctly resolves inputs via `htmlFor`/`id` association just as it did with implicit label nesting.
+
+---
+
+## Post-plan cleanup — ReviewForm styling
+
+User pointed out the form still rendered "inline" — unstyled, default browser layout with no visual grouping between labels and their fields. Wrapped each label+input pair in a `.field` div and added a `.review-form` CSS block to `index.css` (vertical flex layout, consistent input/select/textarea styling, a styled submit button, error text in red), reusing the existing `--text-h`/`--border`/`--bg`/`--accent` theme variables so it respects the scaffold's existing light/dark mode support rather than hardcoding colors.
+
+```bash
+docker compose run --rm frontend-tools npm run build
+docker compose run --rm frontend-tools npm test
+```
+Build succeeded — CSS bundle grew from 1.80kB to 2.53kB, confirming the new rules were included. All 6 frontend tests still pass unaffected (structural `.field` wrapper divs don't change what `getByLabelText`/`getByRole` resolve).
+
+---
+
+## Post-plan cleanup — Game List grid layout
+
+User asked for the game list to render as a grid, 3 games per row. Wrapped `GameCard`s in a `.game-grid` div in `GameListPage`, added `display: grid; grid-template-columns: repeat(3, 1fr)` with responsive breakpoints (2 columns ≤1024px, 1 column ≤640px) to `index.css`, and gave `GameCard`'s `Link` a `.game-card` class (bordered card styling, hover state using the existing `--accent-border` variable).
+
+```bash
+docker compose run --rm frontend-tools npm run build
+docker compose run --rm frontend-tools npm test
+```
+Build succeeded (CSS bundle grew to 3.04kB), all 6 frontend tests still pass.
+
+---
+
+## Post-plan cleanup — center the review form
+
+User noted the review form sat left-aligned on the page. Added `margin: 0 auto` to `.review-form` in `index.css` (it already had `max-width: 480px`, just no auto margins to center within its container).
+
+```bash
+docker compose run --rm frontend-tools npm run build
+docker compose run --rm frontend-tools npm test
+```
+Build succeeded, all 6 frontend tests still pass.
+
+---
+
+## Post-plan cleanup — ReviewList styling
+
+User asked to fix `ReviewList`'s uncluttered/unstyled bullet list and center it, matching the treatment already given to `ReviewForm` and the game grid. Added `.review-list`/`.review-item`/`.review-item-header`/`.review-rating` classes: reviewer name and rating on one line (space-between), review text and date below, each review in a bordered card, list itself centered via `margin: 0 auto` with the same `max-width: 480px` as the review form so both sit aligned on the page. Wrapped reviewer name + rating in a `.review-item-header` div in `ReviewList.tsx` for the flex layout.
+
+```bash
+docker compose run --rm frontend-tools npm run build
+docker compose run --rm frontend-tools npm test
+```
+Build succeeded (CSS bundle grew to 3.51kB), all 6 frontend tests still pass — the added wrapper div doesn't change any text content the tests assert on.
+
+---
+
+## Post-plan cleanup — replace seed games
+
+User requested replacing the seed data with a different 5 games: Stardew Valley (kept), Cities: Skylines, BeamNG.drive, Euro Truck Simulator 2, Stranded Deep. Rewrote `seedGames` in `backend/src/database/seed.ts` with genre/platform/description and 2–3 reviews each for the new titles. Checked `README.md` and the e2e/frontend test fixtures for stale references to the old titles (Elden Ring, Hades, Witcher, Cyberpunk) — README never named specific games, and the test fixtures use those titles as arbitrary self-contained test data unrelated to the real seed list, so neither needed changes.
+
+```bash
+docker compose run --rm backend-tools npm run build
+```
+Confirmed the updated seed file compiles cleanly.
+
+```bash
+docker compose down -v
+docker compose up -d --build
+curl -s http://localhost:3000/api/games
+curl -s http://localhost:3000/api/games/1/reviews
+curl -s http://localhost:3000/api/games/3/reviews
+docker compose down
+```
+Fresh start (volume removed) to force reseeding. Confirmed all 5 new games appear in the requested order with correct genre/platform/description, and review counts are right (3 for Stardew Valley, 3 for BeamNG.drive).
+
+```bash
+docker compose run --rm backend-tools npm run test:e2e
+```
+Confirmed all 11 backend e2e tests still pass — they use their own isolated in-memory test data, unaffected by the real seed list changing.

@@ -10,10 +10,13 @@ export function ReviewList({ reviews }: ReviewListProps) {
   }
 
   return (
-    <ul>
+    <ul className="review-list">
       {reviews.map((review) => (
-        <li key={review.id}>
-          <strong>{review.reviewerName}</strong> — {review.rating}/5
+        <li key={review.id} className="review-item">
+          <div className="review-item-header">
+            <strong>{review.reviewerName}</strong>
+            <span className="review-rating">{review.rating}/5</span>
+          </div>
           <p>{review.text}</p>
           <time dateTime={review.createdAt}>
             {new Date(review.createdAt).toLocaleDateString()}

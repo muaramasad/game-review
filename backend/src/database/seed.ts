@@ -18,87 +18,6 @@ interface SeedGame {
 
 const seedGames: SeedGame[] = [
   {
-    title: 'Elden Ring',
-    genre: 'Action RPG',
-    platform: 'PC',
-    description:
-      'An open-world action RPG set in the Lands Between, created by FromSoftware and George R. R. Martin.',
-    reviews: [
-      {
-        reviewerName: 'Alice',
-        rating: 5,
-        text: 'Best open-world game I have ever played.',
-      },
-      {
-        reviewerName: 'Bob',
-        rating: 4,
-        text: 'Incredible world design, though the difficulty spikes are brutal.',
-      },
-    ],
-  },
-  {
-    title: 'Hades',
-    genre: 'Roguelike',
-    platform: 'PC',
-    description:
-      'A rogue-like dungeon crawler where you defy the god of the dead as you hack and slash out of the Underworld.',
-    reviews: [
-      {
-        reviewerName: 'Carla',
-        rating: 5,
-        text: 'Addictive gameplay loop and amazing writing.',
-      },
-      {
-        reviewerName: 'Dan',
-        rating: 5,
-        text: 'The art style and soundtrack are outstanding.',
-      },
-      {
-        reviewerName: 'Elena',
-        rating: 4,
-        text: 'Great replayability, though the story took a while to click for me.',
-      },
-    ],
-  },
-  {
-    title: 'The Witcher 3',
-    genre: 'Action RPG',
-    platform: 'PC',
-    description:
-      'Geralt of Rivia hunts monsters and gets tangled up in politics across a vast, richly detailed open world.',
-    reviews: [
-      {
-        reviewerName: 'Frank',
-        rating: 5,
-        text: 'One of the best stories in gaming.',
-      },
-      {
-        reviewerName: 'Grace',
-        rating: 5,
-        text: 'Side quests are more compelling than most games main stories.',
-      },
-    ],
-  },
-  {
-    title: 'Cyberpunk 2077',
-    genre: 'Action RPG',
-    platform: 'PC',
-    description:
-      'An open-world, action-adventure story set in Night City, a megalopolis obsessed with power and body modification.',
-    reviews: [
-      {
-        reviewerName: 'Hana',
-        rating: 4,
-        text: 'Much improved since launch — Night City feels alive now.',
-      },
-      {
-        reviewerName: 'Ivan',
-        rating: 3,
-        text: 'Great atmosphere but still runs into the occasional bug.',
-      },
-    ],
-  },
-  {
     title: 'Stardew Valley',
     genre: 'Simulation',
     platform: 'PC',
@@ -119,6 +38,87 @@ const seedGames: SeedGame[] = [
         reviewerName: 'Liam',
         rating: 4,
         text: 'Charming and cozy, great for winding down after work.',
+      },
+    ],
+  },
+  {
+    title: 'Cities: Skylines',
+    genre: 'City Builder',
+    platform: 'PC',
+    description:
+      'A modern take on the city-building simulation, giving you full control over zoning, traffic, and public services as your city grows.',
+    reviews: [
+      {
+        reviewerName: 'Marco',
+        rating: 5,
+        text: 'The traffic simulation alone will eat your whole weekend.',
+      },
+      {
+        reviewerName: 'Nadia',
+        rating: 4,
+        text: 'Deep and rewarding, though it can get overwhelming with all the mods.',
+      },
+    ],
+  },
+  {
+    title: 'BeamNG.drive',
+    genre: 'Driving Simulation',
+    platform: 'PC',
+    description:
+      'A vehicle simulator built around a realistic soft-body physics engine, letting you crash, tune, and drive with genuinely dynamic damage.',
+    reviews: [
+      {
+        reviewerName: 'Owen',
+        rating: 5,
+        text: 'The crash physics are unmatched — nothing else comes close.',
+      },
+      {
+        reviewerName: 'Priya',
+        rating: 4,
+        text: 'Amazing sandbox, though it still feels early-access in places.',
+      },
+      {
+        reviewerName: 'Quentin',
+        rating: 5,
+        text: 'I bought it for the crashes and stayed for the career mode.',
+      },
+    ],
+  },
+  {
+    title: 'Euro Truck Simulator 2',
+    genre: 'Simulation',
+    platform: 'PC',
+    description:
+      'Build a trucking business and haul cargo across a detailed recreation of Europe’s highways and cities.',
+    reviews: [
+      {
+        reviewerName: 'Rosa',
+        rating: 5,
+        text: 'Somehow the most relaxing game I own — perfect with a podcast on.',
+      },
+      {
+        reviewerName: 'Sam',
+        rating: 4,
+        text: 'The map DLCs are pricey but the driving model keeps me coming back.',
+      },
+    ],
+  },
+  {
+    title: 'Stranded Deep',
+    genre: 'Survival',
+    platform: 'PC',
+    description:
+      'Stranded in the middle of the Pacific after a plane crash, you must build, craft, and explore to survive on a set of procedurally generated islands.',
+    reviews: [
+      {
+        reviewerName: 'Tara',
+        rating: 4,
+        text: 'Great survival tension, especially the first time a shark shows up.',
+      },
+      {
+        reviewerName: 'Umar',
+        rating: 3,
+        text: 'Fun loop but starts to feel repetitive after the first few islands.',
       },
     ],
   },

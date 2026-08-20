@@ -7,7 +7,7 @@ interface GameCardProps {
 
 export function GameCard({ game }: GameCardProps) {
   return (
-    <Link to={`/games/${game.id}`}>
+    <Link className="game-card" to={`/games/${game.id}`}>
       <h2>{game.title}</h2>
       {game.genre && <p>Genre: {game.genre}</p>}
       {game.platform && <p>Platform: {game.platform}</p>}

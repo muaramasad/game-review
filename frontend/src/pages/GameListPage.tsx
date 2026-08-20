@@ -21,9 +21,11 @@ export function GameListPage() {
   return (
     <main>
       <h1>Games</h1>
-      {games.map((game) => (
-        <GameCard key={game.id} game={game} />
-      ))}
+      <div className="game-grid">
+        {games.map((game) => (
+          <GameCard key={game.id} game={game} />
+        ))}
+      </div>
     </main>
   );
 }

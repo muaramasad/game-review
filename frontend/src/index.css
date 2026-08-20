@@ -109,3 +109,142 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 }
+
+.game-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  text-align: left;
+}
+
+@media (max-width: 1024px) {
+  .game-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .game-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.game-card {
+  display: block;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.15s ease;
+}
+
+.game-card:hover {
+  border-color: var(--accent-border);
+}
+
+.game-card h2 {
+  margin-bottom: 4px;
+}
+
+.game-card p {
+  color: var(--text);
+  margin-top: 4px;
+}
+
+.review-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+}
+
+.review-item {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.review-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  color: var(--text-h);
+}
+
+.review-rating {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.review-item p {
+  margin: 8px 0;
+  color: var(--text);
+}
+
+.review-item time {
+  font-size: 14px;
+  color: var(--text);
+}
+
+.review-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 480px;
+  margin: 0 auto;
+  text-align: left;
+}
+
+.review-form .field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.review-form label {
+  font-weight: 500;
+  color: var(--text-h);
+}
+
+.review-form input,
+.review-form select,
+.review-form textarea {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font: inherit;
+  color: var(--text-h);
+  background: var(--bg);
+}
+
+.review-form textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.review-form button {
+  align-self: flex-start;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.review-form button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.review-form [role='alert'] {
+  color: #d33;
+}
